@@ -12,6 +12,7 @@ services:
     restart: always
     networks:
       - inventory_network
+      - microservices_network
 
   db:
     image: mysql:8.0-oracle
@@ -34,5 +35,7 @@ volumes:
 
 networks:
   inventory_network:
+  microservices_network:
+    external: true
 
 
