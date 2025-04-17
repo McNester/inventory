@@ -1,36 +1,33 @@
 # Build stage
-FROM golang:1.23.4 as builder
+FROM golang:1.24.2 as builder
 
 WORKDIR /app
 
-# Copy dependency files first for better caching
-COPY go.mod go.sum ./
+# Copy only mod files to leverage cache
+COPY inventory/go.mod inventory/go.sum ./
+COPY cloud_commons/go.mod cloud_commons/go.sum ./cloud_commons/
+
 RUN go mod download
 
-# Copy the rest of the application
-COPY . .
+# Copy full source
+COPY inventory/ .
+COPY cloud_commons/ ./cloud_commons/
 
-# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
 
-# Final stage
+# Final image
 FROM alpine:latest
 
-# Add ca-certificates for HTTPS and timezone data
 RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-# Copy the binary from builder
 COPY --from=builder /app/main .
 
-# Copy the .env file to the final image
 COPY --from=builder /app/.env .env
 
-# Create directory for logs
 RUN mkdir -p /app/logs
 
-EXPOSE 8082
+EXPOSE 50051 
 
 CMD ["./main"]
-

@@ -1,9 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"inventory/db"
 	"inventory/handlers"
+	"net"
 
-	"github.com/gin-gonic/gin"
+	pb "cloud_commons/inventory"
+
+	"google.golang.org/grpc"
 )
 
 var (
@@ -11,19 +16,25 @@ var (
 )
 
 func main() {
-	router := gin.Default()
 
+	defer db.CloseConnection()
+
+	lis, err := net.Listen("tcp", ":50051")
+
+	if err != nil {
+		panic("Failed to listen tcp on 50051")
+	}
+
+	server := grpc.NewServer()
 	product_handler = handlers.NewProductHandler()
 
-	router.POST("/products", product_handler.SaveProduct)
+	pb.RegisterProductServiceServer(server, product_handler)
 
-	router.GET("/products/:id", product_handler.GetProduct)
+	fmt.Println("Starting inventory grpc on 50051")
 
-	router.PATCH("/products/:id", product_handler.UpdateProduct)
+	err = server.Serve(lis)
 
-	router.DELETE("/products/:id", product_handler.DeleteProduct)
-
-	router.GET("/products", product_handler.ListProducts)
-
-	router.Run("0.0.0.0:8082")
+	if err != nil {
+		panic("Failed to serve the inventory: " + err.Error())
+	}
 }
